@@ -1,4 +1,4 @@
-import { Persona, ChatMessage, Insights } from '@/types/interview';
+import { ChatMessage, Insights } from '@/types/interview';
 
 // Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -28,7 +28,7 @@ class ApiService {
    * Start a new interview session
    */
   async startInterview(
-    persona: Persona,
+    personaId: string,
     problem: string,
     solution: string
   ): Promise<StartInterviewResponse> {
@@ -37,7 +37,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ persona, problem, solution }),
+      body: JSON.stringify({ persona_id: personaId, problem, solution }),
     });
 
     if (!response.ok) {

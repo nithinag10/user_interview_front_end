@@ -31,6 +31,7 @@ const NewInterview = () => {
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [selectedTab, setSelectedTab] = useState<'predefined' | 'custom'>('predefined');
   const [selectedPersona, setSelectedPersona] = useState<PredefinedPersona | null>(null);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
   const [persona, setPersona] = useState<Persona>({
     name: '',
     role: '',
@@ -66,9 +67,11 @@ const NewInterview = () => {
 
   const handleSelectPredefinedPersona = (predefinedPersona: PredefinedPersona) => {
     setSelectedPersona(predefinedPersona);
+    setSelectedPersonaId(predefinedPersona.id);
   };
 
   const startInterview = async (
+    personaId: string,
     personaData: Persona,
     problemContext: string,
     solutionContext: string
@@ -77,12 +80,13 @@ const NewInterview = () => {
 
     try {
       const response = await apiService.startInterview(
-        personaData,
+        personaId,
         problemContext,
         solutionContext
       );
 
       console.log('✅ Interview created:', response.interviewId);
+      console.log('   Persona ID:', personaId);
       console.log('   Problem:', problemContext);
       console.log('   Solution:', solutionContext);
 
@@ -134,7 +138,17 @@ const NewInterview = () => {
       return;
     }
 
-    await startInterview(persona, problem, solution);
+    // For predefined personas, use the ID; for custom personas, we need to handle differently
+    if (selectedPersonaId) {
+      await startInterview(selectedPersonaId, persona, problem, solution);
+    } else {
+      // Custom persona - this will need backend support for custom personas
+      toast({
+        title: 'Custom personas not supported yet',
+        description: 'Please select a predefined persona.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
