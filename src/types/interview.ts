@@ -20,39 +20,39 @@ export interface Interview {
   createdAt: Date;
 }
 
-export interface ThemeInsight {
-  theme: string;
-  quotes: string[];
-  emotionalTone: string;
-  underlyingNeed: string;
-}
-
-export interface HumanInsight {
-  coreDesires: string[];
-  fearsOrFrustrations: string[];
-  aspirations: string[];
-}
-
-export interface ContextualInsight {
-  whenProblemFelt: string[];
-  triggersMoments: string[];
-  preventionBarriers: string[];
-}
-
-export interface EmotionalPhase {
-  phase: string;
-  emotion: string;
-  emoji: string;
+export interface ValidationScore {
+  score: number; // 0-10
+  label: string; // "Strong", "Moderate", "Weak"
+  reasoning: string;
 }
 
 export interface Insights {
-  summary: string;
-  overallMood: string;
-  moodEmoji: string;
-  topicCloud: string[];
-  themes: ThemeInsight[];
-  humanInsights: HumanInsight;
-  contextualInsights: ContextualInsight;
-  opportunityMap: string[];
-  emotionalJourney: EmotionalPhase[];
+  // Overall verdict
+  overallVerdict: string; // "GO", "MAYBE", "NO GO"
+  confidenceScore: number; // 0-100
+
+  // Problem validation
+  problemValidation: ValidationScore;
+
+  // Market validation
+  marketValidation: ValidationScore;
+
+  // Willingness to pay
+  paymentValidation: ValidationScore;
+
+  // Key findings
+  goodNews: string[]; // Positive signals
+  badNews: string[]; // Red flags and concerns
+
+  // Execution challenges
+  executionChallenges: string[]; // What will be hard to build/sell
+
+  // Recommendations
+  nextSteps: string[]; // What to do next
+
+  // Evidence from interview
+  keyQuotes: string[]; // Important things the user said
+
+  // Detailed analysis (the roast)
+  detailedAnalysis: string;
 }
