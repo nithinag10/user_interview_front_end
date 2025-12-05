@@ -1,105 +1,153 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import Header from '@/components/Header';
-import { Persona } from '@/types/interview';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/services/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Building2, User, ArrowRight, Zap } from 'lucide-react';
 
-interface PredefinedPersona {
-  id: string;
-  name: string;
-  role: string;
-  industry: string;
-  background: string;
-  avatar: string;
-  tags: string[];
+type PersonaType = 'b2c' | 'b2b';
+type BudgetAuthority = 'personal' | 'household' | 'cost-center' | 'recommender' | 'no-authority';
+
+interface PersonaData {
+  type: PersonaType;
+  // Shared field
+  jtbd: string;
+
+  // B2C specific
+  ageRange?: string;
+  location?: string;
+  psychographics?: string;
+  disposableIncome?: number; // Monthly disposable income
+  b2cBudgetAuthority?: 'personal' | 'household';
+
+  // B2B specific
+  industry?: string;
+  customIndustry?: string;
+  role?: string;
+  customRole?: string;
+  companySize?: string;
+  b2bBudgetAuthority?: 'cost-center' | 'recommender' | 'no-authority';
+
+  // Shared
+  currentAlternative: string;
+}
+
+interface BusinessContext {
+  problem: string;
+  solution: string;
 }
 
 const NewInterview = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPersonas, setLoadingPersonas] = useState(false);
-  const [predefinedPersonas, setPredefinedPersonas] = useState<PredefinedPersona[]>([]);
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
-  const [selectedTab, setSelectedTab] = useState<'predefined' | 'custom'>('predefined');
-  const [selectedPersona, setSelectedPersona] = useState<PredefinedPersona | null>(null);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
-  const [persona, setPersona] = useState<Persona>({
-    name: '',
-    role: '',
-    industry: '',
-    background: '',
+
+  const [personaData, setPersonaData] = useState<PersonaData>({
+    type: 'b2c',
+    jtbd: '',
+    currentAlternative: '',
+    disposableIncome: 500, // Default $500/month
   });
-  const [problem, setProblem] = useState<string>('');
-  const [solution, setSolution] = useState<string>('');
 
-  // Fetch predefined personas on component mount
-  useEffect(() => {
-    const fetchPersonas = async () => {
-      setLoadingPersonas(true);
-      try {
-        const response = await fetch(`${apiService['baseUrl']}/api/interviews/personas`);
-        const data = await response.json();
-        setPredefinedPersonas(data.personas);
-      } catch (error) {
-        console.error('Failed to fetch personas:', error);
-        toast({
-          title: 'Failed to load personas',
-          description: 'Using custom persona form instead.',
-          variant: 'destructive',
-        });
-        setSelectedTab('custom');
-      } finally {
-        setLoadingPersonas(false);
-      }
-    };
+  const [businessContext, setBusinessContext] = useState<BusinessContext>({
+    problem: '',
+    solution: '',
+  });
 
-    fetchPersonas();
-  }, [toast]);
-
-  const handleSelectPredefinedPersona = (predefinedPersona: PredefinedPersona) => {
-    setSelectedPersona(predefinedPersona);
-    setSelectedPersonaId(predefinedPersona.id);
+  const handlePersonaTypeChange = (type: PersonaType) => {
+    setPersonaData({
+      type,
+      jtbd: personaData.jtbd,
+      currentAlternative: personaData.currentAlternative,
+    });
   };
 
-  const startInterview = async (
-    personaId: string,
-    personaData: Persona,
-    problemContext: string,
-    solutionContext: string
-  ) => {
+  const handleStep1Continue = () => {
+    // Validation
+    if (!personaData.jtbd.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please describe the job-to-be-done.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!personaData.currentAlternative.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please describe what they currently use.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (personaData.type === 'b2c') {
+      if (!personaData.psychographics || !personaData.b2cBudgetAuthority) {
+        toast({
+          title: 'Missing Information',
+          description: 'Please fill in all B2C fields.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else {
+      // B2B validation
+      const hasIndustry = personaData.industry && (personaData.industry !== 'custom' || personaData.customIndustry?.trim());
+      const hasRole = personaData.role && (personaData.role !== 'custom' || personaData.customRole?.trim());
+
+      if (!hasIndustry || !hasRole || !personaData.companySize || !personaData.b2bBudgetAuthority) {
+        toast({
+          title: 'Missing Information',
+          description: 'Please fill in all B2B fields including custom values.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    setCurrentStep(2);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!businessContext.problem.trim() || !businessContext.solution.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in both problem and solution fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Create a mock persona for now (backend will need updating)
+      const mockPersonaId = 'custom-persona-' + Date.now();
+
       const response = await apiService.startInterview(
-        personaId,
-        problemContext,
-        solutionContext
+        mockPersonaId,
+        businessContext.problem,
+        businessContext.solution
       );
 
-      console.log('✅ Interview created:', response.interviewId);
-      console.log('   Persona ID:', personaId);
-      console.log('   Problem:', problemContext);
-      console.log('   Solution:', solutionContext);
-
       sessionStorage.setItem('currentPersona', JSON.stringify(personaData));
-      sessionStorage.setItem('currentProblem', problemContext);
-      sessionStorage.setItem('currentSolution', solutionContext);
+      sessionStorage.setItem('currentProblem', businessContext.problem);
+      sessionStorage.setItem('currentSolution', businessContext.solution);
       sessionStorage.setItem('currentInterviewId', response.interviewId);
-
-      console.log('💾 Saved to sessionStorage:', response.interviewId);
 
       toast({
         title: 'Interview starting!',
-        description: 'Preparing your AI-powered conversation...',
+        description: 'Preparing your validation simulation...',
       });
 
       setTimeout(() => {
@@ -117,364 +165,585 @@ const NewInterview = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!persona.name || !persona.role || !persona.industry || !persona.background) {
-      toast({
-        title: 'Missing information',
-        description: 'Please fill in all persona fields to continue.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!problem.trim() || !solution.trim()) {
-      toast({
-        title: 'Missing information',
-        description: 'Please fill in both problem and solution fields.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // For predefined personas, use the ID; for custom personas, we need to handle differently
-    if (selectedPersonaId) {
-      await startInterview(selectedPersonaId, persona, problem, solution);
-    } else {
-      // Custom persona - this will need backend support for custom personas
-      toast({
-        title: 'Custom personas not supported yet',
-        description: 'Please select a predefined persona.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-charcoal text-gray-100">
       <Header />
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-6 md:px-8 py-16 md:py-20">
         <div className="max-w-4xl mx-auto">
-          {/* Step Indicator */}
-          <div className="text-center mb-8 animate-fade-in">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold ${currentStep === 1 ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary'}`}>
-                1
+          {/* Progress Indicator */}
+          <div className="mb-12 animate-fade-in">
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className={`relative flex items-center justify-center w-12 h-12 rounded-xl font-mono font-bold text-lg transition-all ${
+                currentStep === 1
+                  ? 'bg-cyan text-charcoal shadow-lg shadow-cyan/30'
+                  : 'bg-cyan/20 text-cyan border-2 border-cyan/40'
+              }`}>
+                01
+                {currentStep === 2 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-mint rounded-full border-2 border-charcoal flex items-center justify-center">
+                    <svg className="w-3 h-3 text-charcoal" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
               </div>
-              <div className={`h-1 w-16 ${currentStep === 2 ? 'bg-primary' : 'bg-border'}`} />
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold ${currentStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-border text-muted-foreground'}`}>
-                2
+              <div className={`h-1 w-24 rounded transition-all ${currentStep === 2 ? 'bg-cyan' : 'bg-divider'}`} />
+              <div className={`flex items-center justify-center w-12 h-12 rounded-xl font-mono font-bold text-lg transition-all ${
+                currentStep === 2
+                  ? 'bg-cyan text-charcoal shadow-lg shadow-cyan/30'
+                  : 'bg-slate text-gray-500 border-2 border-divider'
+              }`}>
+                02
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-foreground mb-3">
-              {currentStep === 1 ? 'Step 1: Who do you want to interview?' : 'Step 2: Define Your Product Context'}
-            </h1>
-            <p className="text-muted-foreground">
-              {currentStep === 1
-                ? 'Select a persona that matches who you want to learn from.'
-                : 'Tell us about your ideal customer, their problem, and your solution.'}
-            </p>
+
+            <div className="text-center">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-sans">
+                {currentStep === 1 ? (
+                  <>Define <span className="text-cyan">The Skeptic</span></>
+                ) : (
+                  <>Frame <span className="text-burnt-orange">The Problem</span></>
+                )}
+              </h1>
+              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+                {currentStep === 1
+                  ? 'Who are you selling to? Start by defining the core entity of your target customer.'
+                  : 'What problem are they facing, and what solution are you proposing?'}
+              </p>
+            </div>
           </div>
 
-          {/* Step 1: Persona Selection */}
+          {/* Step 1: Persona Definition */}
           {currentStep === 1 && (
-            <div className="space-y-6 animate-slide-up">
-              <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'predefined' | 'custom')}>
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="predefined">Predefined Personas</TabsTrigger>
-                  <TabsTrigger value="custom">Custom Persona</TabsTrigger>
-                </TabsList>
+            <div className="space-y-8 animate-slide-up">
+              {/* Persona Type Toggle */}
+              <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                    1. Who are you selling to?
+                  </h3>
+                  <p className="text-sm text-gray-400 font-mono">THE FIRST DECISION</p>
+                </div>
 
-                <TabsContent value="predefined">
-                  {!selectedPersona ? (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Select a Persona</CardTitle>
-                        <CardDescription>
-                          Choose from our ready-made personas to interview
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {loadingPersonas ? (
-                          <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            <span className="ml-3 text-muted-foreground">Loading personas...</span>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {predefinedPersonas.map((predefined) => (
-                              <button
-                                key={predefined.id}
-                                onClick={() => handleSelectPredefinedPersona(predefined)}
-                                className="group relative text-left p-4 rounded-lg border-2 border-border bg-card hover:border-primary hover:shadow-md transition-all duration-200"
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="text-3xl flex-shrink-0 transition-transform group-hover:scale-110">
-                                    {predefined.avatar}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2 mb-1">
-                                      <div>
-                                        <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
-                                          {predefined.name}
-                                        </h3>
-                                        <p className="text-xs text-muted-foreground font-medium">
-                                          {predefined.role}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                      {predefined.tags.slice(0, 3).map((tag) => (
-                                        <span
-                                          key={tag}
-                                          className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors"
-                                        >
-                                          {tag}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => handlePersonaTypeChange('b2c')}
+                    className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                      personaData.type === 'b2c'
+                        ? 'border-cyan bg-cyan/10 shadow-lg shadow-cyan/20'
+                        : 'border-divider bg-charcoal hover:border-cyan/40'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center transition-colors ${
+                        personaData.type === 'b2c' ? 'bg-cyan/20' : 'bg-slate'
+                      }`}>
+                        <User className={`w-8 h-8 ${personaData.type === 'b2c' ? 'text-cyan' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <h4 className={`font-bold text-lg mb-1 ${personaData.type === 'b2c' ? 'text-cyan' : 'text-white'}`}>
+                          B2C: Individual
+                        </h4>
+                        <p className="text-sm text-gray-400">
+                          Consumer or freelancer
+                        </p>
+                      </div>
+                    </div>
+                    {personaData.type === 'b2c' && (
+                      <div className="absolute top-3 right-3 w-6 h-6 bg-cyan rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-charcoal" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
 
-                                {/* Hover indicator */}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
-                                    View Details
-                                  </div>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card className="animate-slide-up">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4">
-                            <div className="text-5xl">
-                              {selectedPersona.avatar}
-                            </div>
-                            <div>
-                              <CardTitle className="text-2xl mb-2">{selectedPersona.name}</CardTitle>
-                              <CardDescription className="text-base">
-                                {selectedPersona.role} • {selectedPersona.industry}
-                              </CardDescription>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedPersona(null)}
+                  <button
+                    type="button"
+                    onClick={() => handlePersonaTypeChange('b2b')}
+                    className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                      personaData.type === 'b2b'
+                        ? 'border-cyan bg-cyan/10 shadow-lg shadow-cyan/20'
+                        : 'border-divider bg-charcoal hover:border-cyan/40'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center transition-colors ${
+                        personaData.type === 'b2b' ? 'bg-cyan/20' : 'bg-slate'
+                      }`}>
+                        <Building2 className={`w-8 h-8 ${personaData.type === 'b2b' ? 'text-cyan' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <h4 className={`font-bold text-lg mb-1 ${personaData.type === 'b2b' ? 'text-cyan' : 'text-white'}`}>
+                          B2B: Business
+                        </h4>
+                        <p className="text-sm text-gray-400">
+                          Employee buying for org
+                        </p>
+                      </div>
+                    </div>
+                    {personaData.type === 'b2b' && (
+                      <div className="absolute top-3 right-3 w-6 h-6 bg-cyan rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-charcoal" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Job-to-be-Done (Shared Field) */}
+              <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                    2. The Customer's Core Goal
+                  </h3>
+                  <p className="text-sm text-gray-400 font-mono">JOB-TO-BE-DONE (CRITICAL)</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="jtbd" className="text-white font-medium">
+                    What specific outcome are they trying to achieve?
+                  </Label>
+                  <Textarea
+                    id="jtbd"
+                    placeholder="e.g., 'Save $50 on their annual travel' or 'Reduce compliance audit time by 5 hours'"
+                    rows={3}
+                    value={personaData.jtbd}
+                    onChange={(e) => setPersonaData({ ...personaData, jtbd: e.target.value })}
+                    className="bg-charcoal border-2 border-divider text-white placeholder:text-gray-600 focus:border-cyan font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 font-mono">
+                    ⚡ Focus on measurable outcomes, not vague desires
+                  </p>
+                </div>
+              </div>
+
+              {/* Context-Specific Fields */}
+              {personaData.type === 'b2c' ? (
+                <div className="space-y-6">
+                  <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                        3. Individual Context
+                      </h3>
+                      <p className="text-sm text-gray-400 font-mono">B2C SPECIFICS</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* Demographics */}
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label htmlFor="age" className="text-white font-medium">Age Range</Label>
+                          <Select value={personaData.ageRange} onValueChange={(value) => setPersonaData({ ...personaData, ageRange: value })}>
+                            <SelectTrigger className="bg-charcoal border-2 border-divider text-white">
+                              <SelectValue placeholder="Select age range" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="18-24">18-24</SelectItem>
+                              <SelectItem value="25-34">25-34</SelectItem>
+                              <SelectItem value="35-44">35-44</SelectItem>
+                              <SelectItem value="45-54">45-54</SelectItem>
+                              <SelectItem value="55+">55+</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label htmlFor="location" className="text-white font-medium">Location</Label>
+                          <Input
+                            id="location"
+                            placeholder="e.g., San Francisco, USA"
+                            value={personaData.location || ''}
+                            onChange={(e) => setPersonaData({ ...personaData, location: e.target.value })}
+                            className="bg-charcoal border-2 border-divider text-white placeholder:text-gray-600"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Psychographics */}
+                      <div className="space-y-3">
+                        <Label htmlFor="psychographics" className="text-white font-medium">
+                          Psychographics & Behavior
+                        </Label>
+                        <Textarea
+                          id="psychographics"
+                          placeholder="e.g., 'Budget conscious,' 'Early adopter of fitness tech,' 'Spends hours on TikTok'"
+                          rows={3}
+                          value={personaData.psychographics || ''}
+                          onChange={(e) => setPersonaData({ ...personaData, psychographics: e.target.value })}
+                          className="bg-charcoal border-2 border-divider text-white placeholder:text-gray-600 font-mono text-sm"
+                        />
+                      </div>
+
+                      {/* Disposable Income Slider */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-white font-medium">Monthly Disposable Income</Label>
+                          <span className="font-mono text-lg text-cyan font-bold">
+                            ${personaData.disposableIncome?.toLocaleString()}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[personaData.disposableIncome || 500]}
+                          onValueChange={(value) => setPersonaData({ ...personaData, disposableIncome: value[0] })}
+                          min={0}
+                          max={5000}
+                          step={50}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 font-mono">
+                          <span>$0</span>
+                          <span>$5,000</span>
+                        </div>
+                      </div>
+
+                      {/* Budget Authority */}
+                      <div className="space-y-3">
+                        <Label className="text-white font-medium">Budget Authority</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setPersonaData({ ...personaData, b2cBudgetAuthority: 'personal' })}
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${
+                              personaData.b2cBudgetAuthority === 'personal'
+                                ? 'border-cyan bg-cyan/10 text-cyan'
+                                : 'border-divider bg-charcoal text-gray-400 hover:border-cyan/40'
+                            }`}
                           >
-                            Change
-                          </Button>
+                            <div className="font-mono font-semibold text-sm">Personal Income</div>
+                            <div className="text-xs mt-1 opacity-80">Disposable income</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPersonaData({ ...personaData, b2cBudgetAuthority: 'household' })}
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${
+                              personaData.b2cBudgetAuthority === 'household'
+                                ? 'border-cyan bg-cyan/10 text-cyan'
+                                : 'border-divider bg-charcoal text-gray-400 hover:border-cyan/40'
+                            }`}
+                          >
+                            <div className="font-mono font-semibold text-sm">Household Budget</div>
+                            <div className="text-xs mt-1 opacity-80">Shared finances</div>
+                          </button>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div>
-                          <h4 className="font-semibold text-sm text-muted-foreground mb-2">Background</h4>
-                          <p className="text-foreground leading-relaxed">{selectedPersona.background}</p>
-                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                        3. Organizational Context
+                      </h3>
+                      <p className="text-sm text-gray-400 font-mono">B2B SPECIFICS</p>
+                    </div>
 
-                        <div>
-                          <h4 className="font-semibold text-sm text-muted-foreground mb-2">Expertise</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedPersona.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-block px-3 py-1.5 text-sm font-medium rounded-full bg-primary/10 text-primary"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="pt-4 border-t">
-                          <Button
-                            onClick={() => {
-                              setPersona({
-                                name: selectedPersona.name,
-                                role: selectedPersona.role,
-                                industry: selectedPersona.industry,
-                                background: selectedPersona.background,
-                              });
-                              setCurrentStep(2);
+                    <div className="space-y-6">
+                      {/* Industry & Role */}
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label htmlFor="industry" className="text-white font-medium">Industry</Label>
+                          <Select
+                            value={personaData.industry}
+                            onValueChange={(value) => {
+                              if (value === 'custom') {
+                                setPersonaData({ ...personaData, industry: value, customIndustry: '' });
+                              } else {
+                                setPersonaData({ ...personaData, industry: value, customIndustry: undefined });
+                              }
                             }}
-                            className="w-full"
-                            size="lg"
                           >
-                            Next: Define Product Context
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="custom">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Custom Persona</CardTitle>
-                      <CardDescription>
-                        Create your own unique persona to interview
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <form onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!persona.name || !persona.role || !persona.industry || !persona.background) {
-                          toast({
-                            title: 'Missing information',
-                            description: 'Please fill in all persona fields to continue.',
-                            variant: 'destructive',
-                          });
-                          return;
-                        }
-                        setCurrentStep(2);
-                      }} className="space-y-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="name">Customer Name</Label>
-                          <Input
-                            id="name"
-                            placeholder="e.g., Sarah Chen"
-                            value={persona.name}
-                            onChange={(e) => setPersona({ ...persona, name: e.target.value })}
-                          />
+                            <SelectTrigger className="bg-charcoal border-2 border-divider text-white">
+                              <SelectValue placeholder="Select industry" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="saas">SaaS</SelectItem>
+                              <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                              <SelectItem value="finance">Finance</SelectItem>
+                              <SelectItem value="healthcare">Healthcare</SelectItem>
+                              <SelectItem value="retail">Retail</SelectItem>
+                              <SelectItem value="education">Education</SelectItem>
+                              <SelectItem value="custom">Other (specify)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {personaData.industry === 'custom' && (
+                            <Input
+                              placeholder="Type your industry..."
+                              value={personaData.customIndustry || ''}
+                              onChange={(e) => setPersonaData({ ...personaData, customIndustry: e.target.value })}
+                              className="bg-charcoal border-2 border-cyan text-white placeholder:text-gray-600 font-mono"
+                            />
+                          )}
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="role">Role / Title</Label>
-                          <Input
-                            id="role"
-                            placeholder="e.g., Startup Founder, Product Manager"
-                            value={persona.role}
-                            onChange={(e) => setPersona({ ...persona, role: e.target.value })}
-                          />
+                        <div className="space-y-3">
+                          <Label htmlFor="role" className="text-white font-medium">User Role</Label>
+                          <Select
+                            value={personaData.role}
+                            onValueChange={(value) => {
+                              if (value === 'custom') {
+                                setPersonaData({ ...personaData, role: value, customRole: '' });
+                              } else {
+                                setPersonaData({ ...personaData, role: value, customRole: undefined });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="bg-charcoal border-2 border-divider text-white">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cfo">CFO</SelectItem>
+                              <SelectItem value="marketing-manager">Marketing Manager</SelectItem>
+                              <SelectItem value="developer">Developer</SelectItem>
+                              <SelectItem value="operations">Operations Manager</SelectItem>
+                              <SelectItem value="founder">Founder/CEO</SelectItem>
+                              <SelectItem value="custom">Other (specify)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {personaData.role === 'custom' && (
+                            <Input
+                              placeholder="Type the role..."
+                              value={personaData.customRole || ''}
+                              onChange={(e) => setPersonaData({ ...personaData, customRole: e.target.value })}
+                              className="bg-charcoal border-2 border-cyan text-white placeholder:text-gray-600 font-mono"
+                            />
+                          )}
                         </div>
+                      </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="industry">Industry</Label>
-                          <Input
-                            id="industry"
-                            placeholder="e.g., B2B SaaS, E-commerce"
-                            value={persona.industry}
-                            onChange={(e) => setPersona({ ...persona, industry: e.target.value })}
-                          />
+                      {/* Company Size */}
+                      <div className="space-y-3">
+                        <Label className="text-white font-medium">Company Size</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {['1-50', '51-200', '201-1000', '1000+'].map((size) => (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => setPersonaData({ ...personaData, companySize: size })}
+                              className={`p-3 rounded-lg border-2 text-center transition-all ${
+                                personaData.companySize === size
+                                  ? 'border-cyan bg-cyan/10 text-cyan'
+                                  : 'border-divider bg-charcoal text-gray-400 hover:border-cyan/40'
+                              }`}
+                            >
+                              <div className="font-mono font-semibold text-sm">{size}</div>
+                              <div className="text-xs mt-1 opacity-80">employees</div>
+                            </button>
+                          ))}
                         </div>
+                      </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="background">Background & Context</Label>
-                          <Textarea
-                            id="background"
-                            placeholder="Describe their challenges, goals, and context. The more detail, the better the interview."
-                            rows={5}
-                            value={persona.background}
-                            onChange={(e) => setPersona({ ...persona, background: e.target.value })}
-                          />
+                      {/* Budget Authority */}
+                      <div className="space-y-3">
+                        <Label className="text-white font-medium">Budget Authority</Label>
+                        <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => setPersonaData({ ...personaData, b2bBudgetAuthority: 'cost-center' })}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                              personaData.b2bBudgetAuthority === 'cost-center'
+                                ? 'border-cyan bg-cyan/10'
+                                : 'border-divider bg-charcoal hover:border-cyan/40'
+                            }`}
+                          >
+                            <div className={`font-mono font-semibold text-sm mb-1 ${personaData.b2bBudgetAuthority === 'cost-center' ? 'text-cyan' : 'text-white'}`}>
+                              Cost Center Owner
+                            </div>
+                            <div className="text-xs text-gray-400">Has budget and can make purchasing decisions</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPersonaData({ ...personaData, b2bBudgetAuthority: 'recommender' })}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                              personaData.b2bBudgetAuthority === 'recommender'
+                                ? 'border-burnt-orange bg-burnt-orange/10'
+                                : 'border-divider bg-charcoal hover:border-burnt-orange/40'
+                            }`}
+                          >
+                            <div className={`font-mono font-semibold text-sm mb-1 ${personaData.b2bBudgetAuthority === 'recommender' ? 'text-burnt-orange' : 'text-white'}`}>
+                              Recommender Only
+                            </div>
+                            <div className="text-xs text-gray-400">Needs approval from above</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPersonaData({ ...personaData, b2bBudgetAuthority: 'no-authority' })}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                              personaData.b2bBudgetAuthority === 'no-authority'
+                                ? 'border-burnt-orange bg-burnt-orange/10'
+                                : 'border-divider bg-charcoal hover:border-burnt-orange/40'
+                            }`}
+                          >
+                            <div className={`font-mono font-semibold text-sm mb-1 ${personaData.b2bBudgetAuthority === 'no-authority' ? 'text-burnt-orange' : 'text-white'}`}>
+                              No Authority
+                            </div>
+                            <div className="text-xs text-gray-400">Cannot influence purchasing</div>
+                          </button>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                        <Button type="submit" className="w-full" size="lg">
-                          Next: Define Product Context
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+              {/* Current Alternative */}
+              <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                    4. Current Alternative
+                  </h3>
+                  <p className="text-sm text-gray-400 font-mono">WHAT THEY USE NOW</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="alternative" className="text-white font-medium">
+                    What do they currently use to solve this problem?
+                  </Label>
+                  <Input
+                    id="alternative"
+                    placeholder="e.g., 'Google Sheets,' 'A competitor app,' 'Manual process,' 'Nothing at all'"
+                    value={personaData.currentAlternative}
+                    onChange={(e) => setPersonaData({ ...personaData, currentAlternative: e.target.value })}
+                    className="bg-charcoal border-2 border-divider text-white placeholder:text-gray-600 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Continue Button */}
+              <Button
+                onClick={handleStep1Continue}
+                size="lg"
+                className="w-full gap-3 bg-cyan hover:bg-cyan-600 text-charcoal font-bold text-lg px-10 py-7 shadow-xl shadow-cyan/30 hover:shadow-cyan/50 transition-all border-0"
+              >
+                Continue to Problem Framing
+                <ArrowRight className="h-6 w-6" />
+              </Button>
             </div>
           )}
 
-          {/* Step 2: Product Context Form */}
+          {/* Step 2: Business Context */}
           {currentStep === 2 && (
-            <div className="space-y-6 animate-slide-up">
-              {/* Interview Persona Summary */}
-              <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground mb-1">Interviewing:</p>
-                      <p className="font-medium text-foreground">
-                        {persona.name} - {persona.role}
+            <div className="space-y-8 animate-slide-up">
+              {/* Persona Summary */}
+              <div className="bg-slate/50 border-2 border-cyan/30 rounded-xl p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 font-mono mb-2">VALIDATING WITH:</p>
+                    <div className="flex items-center gap-3">
+                      {personaData.type === 'b2c' ? (
+                        <User className="w-5 h-5 text-cyan" />
+                      ) : (
+                        <Building2 className="w-5 h-5 text-cyan" />
+                      )}
+                      <p className="font-bold text-white">
+                        {personaData.type === 'b2c' ? 'B2C Individual' : 'B2B Organization'}
+                        {personaData.type === 'b2b' && personaData.role && ` • ${personaData.role}`}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentStep(1)}
-                    >
-                      Change
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentStep(1)}
+                    className="text-cyan hover:text-cyan-600"
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Business Idea</CardTitle>
-                  <CardDescription>
-                    Tell use about the problem your ideal customer is facing and your proposed solution
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="problem">What problem are they facing?</Label>
-                      <Textarea
-                        id="problem"
-                        placeholder="e.g., They don't have time to plan healthy meals for their family and often resort to fast food or ordering takeout"
-                        rows={3}
-                        value={problem}
-                        onChange={(e) => setProblem(e.target.value)}
-                        className="resize-none"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Explain the specific pain point or challenge they experience
-                      </p>
-                    </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Problem */}
+                <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                      1. The Problem
+                    </h3>
+                    <p className="text-sm text-gray-400 font-mono">WHAT PAIN ARE THEY EXPERIENCING?</p>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="solution">What solution do you think would work?</Label>
-                      <Textarea
-                        id="solution"
-                        placeholder="e.g., A mobile app that generates personalized weekly meal plans based on dietary preferences and automatically creates shopping lists"
-                        rows={3}
-                        value={solution}
-                        onChange={(e) => setSolution(e.target.value)}
-                        className="resize-none"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Describe your proposed solution or product idea
-                      </p>
-                    </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="problem" className="text-white font-medium">
+                      Describe the specific pain point or challenge
+                    </Label>
+                    <Textarea
+                      id="problem"
+                      placeholder="e.g., 'They don't have time to plan healthy meals and often resort to expensive takeout, costing $200+/month'"
+                      rows={4}
+                      value={businessContext.problem}
+                      onChange={(e) => setBusinessContext({ ...businessContext, problem: e.target.value })}
+                      className="bg-charcoal border-2 border-divider text-white placeholder:text-gray-600 focus:border-burnt-orange font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500 font-mono">
+                      ⚠️ Be specific about the cost, time, or frustration they experience
+                    </p>
+                  </div>
+                </div>
 
-                    <div className="flex gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setCurrentStep(1)}
-                        className="flex-1"
-                      >
-                        Back
-                      </Button>
-                      <Button type="submit" className="flex-1" size="lg" disabled={isLoading}>
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Starting Interview...
-                          </>
-                        ) : (
-                          'Validate with the User'
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
+                {/* Solution */}
+                <div className="bg-slate border-2 border-divider rounded-xl p-8">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-white mb-2 font-sans">
+                      2. Your Proposed Solution
+                    </h3>
+                    <p className="text-sm text-gray-400 font-mono">WHAT ARE YOU BUILDING?</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="solution" className="text-white font-medium">
+                      Describe your product idea
+                    </Label>
+                    <Textarea
+                      id="solution"
+                      placeholder="e.g., 'A mobile app that generates personalized weekly meal plans based on dietary preferences and automatically creates shopping lists'"
+                      rows={4}
+                      value={businessContext.solution}
+                      onChange={(e) => setBusinessContext({ ...businessContext, solution: e.target.value })}
+                      className="bg-charcoal border-2 border-divider text-white placeholder:text-gray-600 focus:border-cyan font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500 font-mono">
+                      💡 Focus on what it does, not how smart it is
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCurrentStep(1)}
+                    size="lg"
+                    className="flex-1 border-2 border-divider text-gray-300 hover:text-white hover:bg-slate hover:border-cyan transition-all"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={isLoading}
+                    className="flex-1 gap-3 bg-burnt-orange hover:bg-burnt-orange-600 text-white font-bold text-lg px-10 py-7 shadow-xl shadow-burnt-orange/30 hover:shadow-burnt-orange/50 transition-all border-0"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Starting Simulation...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-5 w-5" />
+                        Run Mom Test Simulation
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </div>
           )}
         </div>
