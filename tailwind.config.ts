@@ -57,6 +57,35 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Industrial Clarity theme colors
+        'charcoal': '#0F1115',
+        'slate': '#1A1D24',
+        'divider': '#2E333D',
+        'cyan': {
+          DEFAULT: '#00C2FF',
+          50: '#E5F9FF',
+          100: '#CCF3FF',
+          500: '#00C2FF',
+          600: '#00A3D9',
+        },
+        'burnt-orange': {
+          DEFAULT: '#F59E0B',
+          50: '#FEF3E2',
+          100: '#FDE68A',
+          500: '#F59E0B',
+          600: '#D97706',
+        },
+        'mint': {
+          DEFAULT: '#10B981',
+          50: '#D1FAE5',
+          100: '#A7F3D0',
+          500: '#10B981',
+          600: '#059669',
+        },
+      },
+      fontFamily: {
+        mono: ['JetBrains Mono', 'Roboto Mono', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -80,10 +109,25 @@ export default {
             height: "0",
           },
         },
+        typewriter: {
+          "0%": { width: "0" },
+          "100%": { width: "100%" },
+        },
+        blink: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "0.6" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        typewriter: "typewriter 2s steps(40) forwards",
+        blink: "blink 1s step-end infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
     },
   },
