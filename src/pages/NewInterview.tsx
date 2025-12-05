@@ -131,11 +131,9 @@ const NewInterview = () => {
     setIsLoading(true);
 
     try {
-      // Create a mock persona for now (backend will need updating)
-      const mockPersonaId = 'custom-persona-' + Date.now();
-
+      // Send the full persona data to the backend
       const response = await apiService.startInterview(
-        mockPersonaId,
+        personaData,
         businessContext.problem,
         businessContext.solution
       );

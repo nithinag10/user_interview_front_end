@@ -1,5 +1,5 @@
 import { ChatMessage as ChatMessageType } from '@/types/interview';
-import { User, Bot } from 'lucide-react';
+import { Zap, AlertTriangle } from 'lucide-react';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -16,28 +16,32 @@ const ChatMessage = ({ message, delay = 0 }: ChatMessageProps) => {
 
   return (
     <div
-      className="flex gap-3 animate-slide-up"
+      className="flex gap-4 animate-slide-up"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-        isInterviewer ? 'bg-primary/10' : 'bg-secondary'
+      <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center border-2 ${
+        isInterviewer
+          ? 'bg-cyan/10 border-cyan/30'
+          : 'bg-burnt-orange/10 border-burnt-orange/30'
       }`}>
         {isInterviewer ? (
-          <Bot className="h-4 w-4 text-primary" />
+          <Zap className="h-5 w-5 text-cyan" />
         ) : (
-          <User className="h-4 w-4 text-muted-foreground" />
+          <AlertTriangle className="h-5 w-5 text-burnt-orange" />
         )}
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">
-            {isInterviewer ? 'Interviewer Agent' : 'Customer Agent'}
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-3">
+          <span className={`text-sm font-bold font-mono ${
+            isInterviewer ? 'text-cyan' : 'text-burnt-orange'
+          }`}>
+            {isInterviewer ? 'INTERVIEWER' : 'CUSTOMER'}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-500 font-mono">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <p className="text-sm text-foreground leading-relaxed">{message.message}</p>
+        <p className="text-sm text-gray-300 leading-relaxed font-sans">{message.message}</p>
       </div>
     </div>
   );

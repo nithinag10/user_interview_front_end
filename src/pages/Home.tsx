@@ -63,7 +63,7 @@ const Home = () => {
                 <Megaphone className="h-8 w-8 text-burnt-orange" />
               </div>
               <h3 className="text-xl md:text-2xl font-bold text-white font-sans">False Positives</h3>
-              <p className="text-gray-400 leading-relaxed text-base">
+              <p className="text-gray-400 leading-relaxed text-base font-sans">
                 You pitch your solution. People say "That sounds neat!" just to end the conversation. You build it. Nobody buys.
               </p>
             </div>
@@ -74,7 +74,7 @@ const Home = () => {
                 <Calendar className="h-8 w-8 text-burnt-orange" />
               </div>
               <h3 className="text-xl md:text-2xl font-bold text-white font-sans">The Scheduling Void</h3>
-              <p className="text-gray-400 leading-relaxed text-base">
+              <p className="text-gray-400 leading-relaxed text-base font-sans">
                 Trying to book 20 qualified prospects for Zoom calls takes weeks of painful outreach.
               </p>
             </div>
@@ -85,7 +85,7 @@ const Home = () => {
                 <Flame className="h-8 w-8 text-burnt-orange" />
               </div>
               <h3 className="text-xl md:text-2xl font-bold text-white font-sans">Building in the Dark</h3>
-              <p className="text-gray-400 leading-relaxed text-base">
+              <p className="text-gray-400 leading-relaxed text-base font-sans">
                 Writing code before knowing if anyone cares is the most expensive hobby in the world.
               </p>
             </div>
@@ -116,7 +116,7 @@ const Home = () => {
                 </div>
               </div>
               <div className="bg-slate border-2 border-divider rounded-xl p-7 lg:p-8 hover:border-cyan/30 transition-colors">
-                <p className="text-gray-300 leading-relaxed text-base md:text-lg">
+                <p className="text-gray-300 leading-relaxed text-base md:text-lg font-sans">
                   Don't pitch. Tell us the specific persona, their current alternative, and their budget reality. We need constraints, not dreams.
                 </p>
               </div>
@@ -139,7 +139,7 @@ const Home = () => {
                 </div>
               </div>
               <div className="bg-slate border-2 border-divider rounded-xl p-7 lg:p-8 hover:border-cyan/30 transition-colors space-y-5">
-                <p className="text-gray-300 leading-relaxed text-base md:text-lg">
+                <p className="text-gray-300 leading-relaxed text-base md:text-lg font-sans">
                   Our Interviewer Agent grills the Customer Agent based on behavioral economics, not flattery.
                 </p>
                 <div className="flex items-center gap-4 text-sm pt-2">
@@ -173,7 +173,7 @@ const Home = () => {
                 </div>
               </div>
               <div className="bg-slate border-2 border-divider rounded-xl p-7 lg:p-8 hover:border-cyan/30 transition-colors">
-                <p className="text-gray-300 leading-relaxed text-base md:text-lg">
+                <p className="text-gray-300 leading-relaxed text-base md:text-lg font-sans">
                   A third agent reviews the transcript to identify friction points, lack of budget, and flawed assumptions. This is where delusions die.
                 </p>
               </div>

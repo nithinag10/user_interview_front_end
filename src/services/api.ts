@@ -29,19 +29,31 @@ class ApiService {
    * Start a new interview session
    */
   async startInterview(
-    personaId: string,
+    personaData: any,
     problem: string,
     solution: string
   ): Promise<StartInterviewResponse> {
+    // Map persona type to backend persona_id
+    // Use a default persona based on the type (B2C vs B2B)
+    const personaId = personaData.type === 'b2b'
+      ? 'early_stage_startup_founder'  // B2B default
+      : 'fitness_seeker_it_engineer';   // B2C default
+
     const response = await fetch(`${this.baseUrl}/api/interviews/start`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ persona_id: personaId, problem, solution }),
+      body: JSON.stringify({
+        persona_id: personaId,
+        problem,
+        solution
+      }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
       throw new Error(`Failed to start interview: ${response.statusText}`);
     }
 
